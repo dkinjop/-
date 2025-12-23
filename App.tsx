@@ -1,39 +1,75 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, ExternalLink, Hash, Heart, Terminal, Cpu, Disc } from 'lucide-react';
-import { IPData, CPData } from './types';
-import { FANDOM_DATA } from './constants';
+import { X, ExternalLink, Hash, Heart, Terminal, Cpu, Disc, Plus } from 'lucide-react';
+import { IPData, CPData, SiteConfig } from './types';
+import { FANDOM_DATA, DEFAULT_SITE_CONFIG } from './constants';
 import { NoiseOverlay } from './components/NoiseOverlay';
+import { EditableText } from './components/EditableText';
+
+// --- Custom Hook for LocalStorage ---
+
+function useStickyState<T>(key: string, defaultValue: T): [T, React.Dispatch<React.SetStateAction<T>>] {
+  const [value, setValue] = useState<T>(() => {
+    const stickyValue = window.localStorage.getItem(key);
+    return stickyValue !== null ? JSON.parse(stickyValue) : defaultValue;
+  });
+
+  useEffect(() => {
+    window.localStorage.setItem(key, JSON.stringify(value));
+  }, [key, value]);
+
+  return [value, setValue];
+}
 
 // --- Helper Components ---
 
-const Marquee = ({ text, direction = 'left' }: { text: string; direction?: 'left' | 'right' }) => (
+const Marquee = ({ text, onUpdate }: { text: string; onUpdate: (val: string) => void }) => (
   <div className="relative flex overflow-hidden py-2 bg-acid-green text-black font-mono font-bold text-sm tracking-widest border-y-2 border-acid-black select-none">
+    <div className="absolute left-4 top-1/2 -translate-y-1/2 z-50 bg-acid-green">
+      {/* Hidden edit trigger for Marquee could be placed here, but simpler to just edit one of the spans? 
+          Actually, editing scrolling text is hard. Let's place a static editable area that syncs.
+          Or simpler: The marquee repeats the text. We can overlay an input?
+          Let's try making the first item editable and it updates the rest.
+      */}
+    </div>
     <motion.div
       className="flex gap-8 whitespace-nowrap"
-      animate={{ x: direction === 'left' ? '-50%' : '0%' }}
-      initial={{ x: direction === 'left' ? '0%' : '-50%' }}
-      transition={{ repeat: Infinity, ease: 'linear', duration: 15 }}
+      animate={{ x: '-50%' }}
+      initial={{ x: '0%' }}
+      transition={{ repeat: Infinity, ease: 'linear', duration: 25 }}
     >
       {[...Array(10)].map((_, i) => (
-        <span key={i} className="mx-4">
-          {text}
+        <span key={i} className="mx-4 flex">
+           {/* Only the first one is practically editable without chasing it, 
+               but for UX let's just allow clicking any. 
+               However, moving text is hard to click. 
+               We will trust the user to pause/catch it or just edit the config elsewhere?
+               Actually, let's just make them all editable instances that update the single source.
+           */}
+           <EditableText 
+             value={text} 
+             onSave={onUpdate} 
+             className="cursor-text"
+           />
         </span>
       ))}
     </motion.div>
   </div>
 );
 
-const GlitchTitle = ({ text }: { text: string }) => {
+const GlitchTitle = ({ text, onUpdate }: { text: string, onUpdate: (val: string) => void }) => {
   return (
-    <div className="relative inline-block group cursor-default">
-      <h1 className="text-6xl md:text-8xl font-display font-black text-transparent bg-clip-text bg-gradient-to-r from-acid-green via-acid-blue to-acid-pink z-10 relative">
+    <div className="relative inline-block group">
+      {/* Main editable layer */}
+      <div className="text-6xl md:text-8xl font-display font-black text-transparent bg-clip-text bg-gradient-to-r from-acid-green via-acid-blue to-acid-pink z-10 relative">
+        <EditableText value={text} onSave={onUpdate} />
+      </div>
+      
+      {/* Decor layers reading the same text prop */}
+      <h1 className="absolute top-0 left-[2px] text-6xl md:text-8xl font-display font-black text-acid-blue opacity-0 group-hover:opacity-70 animate-pulse mix-blend-screen pointer-events-none select-none">
         {text}
       </h1>
-      <h1 className="absolute top-0 left-[2px] text-6xl md:text-8xl font-display font-black text-acid-blue opacity-0 group-hover:opacity-70 animate-pulse mix-blend-screen">
-        {text}
-      </h1>
-      <h1 className="absolute top-0 -left-[2px] text-6xl md:text-8xl font-display font-black text-acid-pink opacity-0 group-hover:opacity-70 animate-pulse delay-75 mix-blend-screen">
+      <h1 className="absolute top-0 -left-[2px] text-6xl md:text-8xl font-display font-black text-acid-pink opacity-0 group-hover:opacity-70 animate-pulse delay-75 mix-blend-screen pointer-events-none select-none">
         {text}
       </h1>
     </div>
@@ -42,7 +78,11 @@ const GlitchTitle = ({ text }: { text: string }) => {
 
 // --- Main Components ---
 
-const IPCard: React.FC<{ data: IPData; onClick: () => void }> = ({ data, onClick }) => {
+const IPCard: React.FC<{ 
+  data: IPData; 
+  onClick: () => void;
+  onUpdate: (updatedData: Partial<IPData>) => void;
+}> = ({ data, onClick, onUpdate }) => {
   const colorMap = {
     green: 'border-acid-green hover:bg-acid-green hover:text-black text-acid-green',
     pink: 'border-acid-pink hover:bg-acid-pink hover:text-black text-acid-pink',
@@ -66,31 +106,47 @@ const IPCard: React.FC<{ data: IPData; onClick: () => void }> = ({ data, onClick
       <div className="space-y-2">
         <div className="flex justify-between items-start font-mono text-xs border-b border-current pb-2 mb-4">
           <span>NO.{data.id}</span>
-          <span>{data.category}</span>
+          <EditableText value={data.category} onSave={(val) => onUpdate({ category: val })} />
         </div>
-        <h2 className="text-4xl font-display font-bold leading-none break-words uppercase">
-          {data.title}
-        </h2>
+        <div className="text-4xl font-display font-bold leading-none break-words uppercase">
+          <EditableText value={data.title} onSave={(val) => onUpdate({ title: val })} multiline />
+        </div>
       </div>
 
       <div className="space-y-4 mt-8">
          <div className="flex flex-wrap gap-2">
-            {data.tags.map(tag => (
-              <span key={tag} className="text-[10px] font-mono border border-current px-1 py-0.5">
-                #{tag}
+            {data.tags.map((tag, idx) => (
+              <span key={idx} className="text-[10px] font-mono border border-current px-1 py-0.5 flex">
+                #<EditableText 
+                    value={tag} 
+                    onSave={(val) => {
+                      const newTags = [...data.tags];
+                      newTags[idx] = val;
+                      onUpdate({ tags: newTags });
+                    }} 
+                 />
               </span>
             ))}
          </div>
          <div className="flex items-center gap-2 font-mono text-xs">
             <Disc className={`w-4 h-4 ${data.colorTheme === 'pink' ? 'animate-spin-slow' : ''}`} />
-            <span>ENTERED: {data.entryDate}</span>
+            <span>ENTERED: <EditableText value={data.entryDate} onSave={(val) => onUpdate({ entryDate: val })} /></span>
          </div>
       </div>
     </motion.div>
   );
 };
 
-const DetailView = ({ data, onClose }: { data: IPData; onClose: () => void }) => {
+const DetailView = ({ 
+  data, 
+  onClose, 
+  onUpdate 
+}: { 
+  data: IPData; 
+  onClose: () => void;
+  onUpdate: (updatedData: Partial<IPData>) => void; 
+}) => {
+  
   const themeColors = {
     green: 'text-acid-green border-acid-green selection:bg-acid-green selection:text-black',
     pink: 'text-acid-pink border-acid-pink selection:bg-acid-pink selection:text-black',
@@ -101,6 +157,12 @@ const DetailView = ({ data, onClose }: { data: IPData; onClose: () => void }) =>
      green: 'bg-acid-green',
      pink: 'bg-acid-pink',
      blue: 'bg-acid-blue',
+  };
+
+  const updateCP = (index: number, field: keyof CPData, value: string) => {
+    const newCPs = [...data.cps];
+    newCPs[index] = { ...newCPs[index], [field]: value };
+    onUpdate({ cps: newCPs });
   };
 
   return (
@@ -138,11 +200,11 @@ const DetailView = ({ data, onClose }: { data: IPData; onClose: () => void }) =>
               transition={{ delay: 0.2 }}
               className="text-5xl md:text-8xl font-display font-black uppercase mb-4 leading-[0.9]"
             >
-              {data.title}
+              <EditableText value={data.title} onSave={(val) => onUpdate({ title: val })} multiline />
             </motion.h2>
             <div className="font-mono text-lg opacity-80 flex flex-col md:flex-row gap-4 md:items-center">
-              <span className="bg-white/10 px-2 py-1">TYPE: {data.category}</span>
-              <span className="bg-white/10 px-2 py-1">DATE: {data.entryDate}</span>
+              <span className="bg-white/10 px-2 py-1 flex gap-2">TYPE: <EditableText value={data.category} onSave={(val) => onUpdate({ category: val })} /></span>
+              <span className="bg-white/10 px-2 py-1 flex gap-2">DATE: <EditableText value={data.entryDate} onSave={(val) => onUpdate({ entryDate: val })} /></span>
             </div>
           </div>
 
@@ -155,9 +217,9 @@ const DetailView = ({ data, onClose }: { data: IPData; onClose: () => void }) =>
                 <div className={`absolute -top-3 left-4 px-2 bg-acid-black font-mono text-xs uppercase ${themeColors[data.colorTheme].split(' ')[0]}`}>
                    System Note
                 </div>
-                <p className="font-mono text-sm leading-relaxed opacity-90">
-                  {data.summary}
-                </p>
+                <div className="font-mono text-sm leading-relaxed opacity-90">
+                  <EditableText value={data.summary} onSave={(val) => onUpdate({ summary: val })} multiline />
+                </div>
               </div>
 
               <div className="space-y-2">
@@ -166,10 +228,23 @@ const DetailView = ({ data, onClose }: { data: IPData; onClose: () => void }) =>
                  </h3>
                  <div className="flex flex-wrap gap-2">
                    {data.tags.map((tag, idx) => (
-                     <span key={tag} className={`text-xs font-mono px-3 py-1 border border-current ${idx % 2 === 0 ? 'bg-white/5' : ''}`}>
-                       {tag}
+                     <span key={idx} className={`text-xs font-mono px-3 py-1 border border-current ${idx % 2 === 0 ? 'bg-white/5' : ''}`}>
+                       <EditableText 
+                         value={tag} 
+                         onSave={(val) => {
+                           const newTags = [...data.tags];
+                           newTags[idx] = val;
+                           onUpdate({ tags: newTags });
+                         }} 
+                       />
                      </span>
                    ))}
+                   <button 
+                     onClick={() => onUpdate({ tags: [...data.tags, 'NEW_TAG'] })}
+                     className="text-xs font-mono px-2 py-1 border border-current bg-white/10 hover:bg-white/20"
+                   >
+                     +
+                   </button>
                  </div>
               </div>
             </div>
@@ -194,22 +269,35 @@ const DetailView = ({ data, onClose }: { data: IPData; onClose: () => void }) =>
                       <div className="flex items-baseline gap-4 mb-2">
                         <span className="font-mono text-xs opacity-50">0{index + 1}</span>
                         <h4 className={`text-xl md:text-2xl font-bold font-mono ${bgColors[data.colorTheme]} text-black px-2 inline-block`}>
-                          {cp.name}
+                          <EditableText value={cp.name} onSave={(val) => updateCP(index, 'name', val)} />
                         </h4>
                       </div>
                       
                       <div className="pl-8 border-l border-current/30 ml-2 space-y-3">
                         <div className="flex gap-4 font-mono text-xs uppercase tracking-widest opacity-70">
-                          <span>[{cp.role}]</span>
+                          <span className="flex">
+                            [<EditableText value={cp.role} onSave={(val) => updateCP(index, 'role', val)} />]
+                          </span>
                           <span>///</span>
-                          <span>{cp.vibe}</span>
+                          <span className="flex">
+                            <EditableText value={cp.vibe} onSave={(val) => updateCP(index, 'vibe', val)} />
+                          </span>
                         </div>
-                        <p className="font-serif italic text-lg md:text-xl leading-relaxed opacity-90">
-                          "{cp.description}"
-                        </p>
+                        <div className="font-serif italic text-lg md:text-xl leading-relaxed opacity-90 transition-all duration-300 hover:opacity-100 hover:scale-[1.02] origin-left hover:text-white">
+                          "<EditableText value={cp.description} onSave={(val) => updateCP(index, 'description', val)} multiline />"
+                        </div>
                       </div>
                     </motion.div>
                   ))}
+                  
+                  <button 
+                     onClick={() => onUpdate({ 
+                       cps: [...data.cps, { name: 'NEW CP', role: 'ROLE', vibe: 'VIBE', description: 'Description...' }] 
+                     })}
+                     className="mt-8 flex items-center gap-2 font-mono text-xs border border-current px-4 py-2 hover:bg-white/10"
+                   >
+                     <Plus size={16} /> ADD ENTRY
+                  </button>
                 </div>
               </div>
             </div>
@@ -228,7 +316,22 @@ const DetailView = ({ data, onClose }: { data: IPData; onClose: () => void }) =>
 };
 
 export default function App() {
-  const [selectedIP, setSelectedIP] = useState<IPData | null>(null);
+  const [fandomData, setFandomData] = useStickyState<IPData[]>('acid_fandom_data', FANDOM_DATA);
+  const [config, setConfig] = useStickyState<SiteConfig>('acid_site_config', DEFAULT_SITE_CONFIG);
+  
+  const [selectedID, setSelectedID] = useState<string | null>(null);
+
+  const selectedIP = fandomData.find(ip => ip.id === selectedID) || null;
+
+  const handleUpdateIP = (id: string, updatedFields: Partial<IPData>) => {
+    setFandomData(prev => prev.map(item => 
+      item.id === id ? { ...item, ...updatedFields } : item
+    ));
+  };
+
+  const handleUpdateConfig = (field: keyof SiteConfig, value: string) => {
+    setConfig(prev => ({ ...prev, [field]: value }));
+  };
 
   return (
     <div className="min-h-screen bg-acid-black text-white relative overflow-x-hidden">
@@ -236,7 +339,10 @@ export default function App() {
       
       {/* Top Marquee */}
       <div className="fixed top-0 left-0 right-0 z-30">
-        <Marquee text="2025 LOGS // SYSTEM ENTRY // FANDOM ARCHIVE // DO NOT DISTRIBUTE //" />
+        <Marquee 
+          text={config.marqueeText} 
+          onUpdate={(val) => handleUpdateConfig('marqueeText', val)} 
+        />
       </div>
 
       <main className="pt-24 pb-24 px-4 md:px-12 max-w-[1600px] mx-auto relative z-10">
@@ -246,15 +352,20 @@ export default function App() {
           <div className="space-y-4">
              <div className="flex items-center gap-2 font-mono text-acid-green text-xs border border-acid-green px-2 py-1 w-fit">
                <span className="w-2 h-2 bg-acid-green rounded-full animate-pulse"></span>
-               <span>SYSTEM STATUS: OBSESSED</span>
+               <span className="flex gap-2">
+                 SYSTEM STATUS: <EditableText value={config.systemStatus} onSave={(val) => handleUpdateConfig('systemStatus', val)} />
+               </span>
              </div>
-             <GlitchTitle text="2025 RECAP" />
+             <GlitchTitle 
+               text={config.mainTitle} 
+               onUpdate={(val) => handleUpdateConfig('mainTitle', val)}
+             />
           </div>
           
           <div className="text-right font-mono text-sm text-acid-blue hidden md:block">
-            <p>USER: ADMIN</p>
-            <p>LOCATION: INTERNET</p>
-            <p>TOTAL ENTRIES: {FANDOM_DATA.length}</p>
+            <p className="flex justify-end gap-2">USER: <EditableText value={config.userRole} onSave={(val) => handleUpdateConfig('userRole', val)} /></p>
+            <p className="flex justify-end gap-2">LOCATION: <EditableText value={config.location} onSave={(val) => handleUpdateConfig('location', val)} /></p>
+            <p>TOTAL ENTRIES: {fandomData.length}</p>
           </div>
         </header>
 
@@ -263,19 +374,22 @@ export default function App() {
           {/* Introductory 'Card' */}
           <div className="p-6 border-2 border-dashed border-white/20 flex flex-col justify-end min-h-[300px]">
             <Cpu className="w-12 h-12 text-white/20 mb-4" />
-            <p className="font-mono text-sm text-white/50 leading-relaxed">
-              WELCOME TO THE ARCHIVE.<br/>
-              THESE ARE THE FRAGMENTS OF MY DIGITAL SOUL FROM THE YEAR 2025.<br/>
-              <br/>
-              CLICK A FILE TO EXPAND.
-            </p>
+            <div className="font-mono text-sm text-white/50 leading-relaxed whitespace-pre-wrap">
+              <EditableText 
+                value={config.introText} 
+                onSave={(val) => handleUpdateConfig('introText', val)} 
+                multiline 
+                className="block"
+              />
+            </div>
           </div>
 
-          {FANDOM_DATA.map((item) => (
+          {fandomData.map((item) => (
             <IPCard 
               key={item.id} 
               data={item} 
-              onClick={() => setSelectedIP(item)} 
+              onClick={() => setSelectedID(item.id)}
+              onUpdate={(updated) => handleUpdateIP(item.id, updated)}
             />
           ))}
         </div>
@@ -284,7 +398,7 @@ export default function App() {
 
       {/* Bottom Footer */}
       <footer className="fixed bottom-0 left-0 right-0 bg-acid-black border-t border-white/10 p-4 z-20 flex justify-between items-center font-mono text-xs text-white/40">
-        <span>© 2025 PERSONAL ARCHIVE</span>
+        <EditableText value={config.footerText} onSave={(val) => handleUpdateConfig('footerText', val)} />
         <div className="flex gap-4">
            <span>MADE WITH REACT + TAILWIND</span>
            <span>[ACID_MODE_ON]</span>
@@ -296,7 +410,8 @@ export default function App() {
         {selectedIP && (
           <DetailView 
             data={selectedIP} 
-            onClose={() => setSelectedIP(null)} 
+            onClose={() => setSelectedID(null)}
+            onUpdate={(updated) => handleUpdateIP(selectedIP.id, updated)}
           />
         )}
       </AnimatePresence>

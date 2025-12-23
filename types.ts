@@ -15,3 +15,13 @@ export interface IPData {
   cps: CPData[];
   tags: string[];
 }
+
+export interface SiteConfig {
+  marqueeText: string;
+  mainTitle: string;
+  userRole: string;
+  location: string;
+  introText: string;
+  footerText: string;
+  systemStatus: string;
+}

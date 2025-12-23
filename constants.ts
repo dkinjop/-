@@ -1,4 +1,14 @@
-import { IPData } from './types';
+import { IPData, SiteConfig } from './types';
+
+export const DEFAULT_SITE_CONFIG: SiteConfig = {
+  marqueeText: "2025 LOGS // SYSTEM ENTRY // FANDOM ARCHIVE // DO NOT DISTRIBUTE //",
+  mainTitle: "2025 RECAP",
+  userRole: "ADMIN",
+  location: "INTERNET",
+  introText: "WELCOME TO THE ARCHIVE.\nTHESE ARE THE FRAGMENTS OF MY DIGITAL SOUL FROM THE YEAR 2025.\n\nCLICK A FILE TO EXPAND.",
+  footerText: "© 2025 PERSONAL ARCHIVE",
+  systemStatus: "OBSESSED"
+};
 
 export const FANDOM_DATA: IPData[] = [
   {
