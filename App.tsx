@@ -75,7 +75,7 @@ const BrutalistCard: React.FC<{
       <div className="p-4 flex justify-between items-end">
          <ArrowUpRight className="w-8 h-8 group-hover:rotate-45 transition-transform duration-300" />
          <span className="font-mono text-[10px] uppercase hidden group-hover:inline-block animate-pulse">
-            Access File ->
+            Access File →
          </span>
       </div>
     </motion.div>
