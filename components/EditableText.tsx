@@ -48,7 +48,7 @@ export const EditableText: React.FC<EditableTextProps> = ({
       onBlur={handleBlur}
       onKeyDown={handleKeyDown}
       onClick={(e: React.MouseEvent) => e.stopPropagation()}
-      className={`outline-none min-w-[1ch] empty:before:content-['...'] empty:before:opacity-50 focus:bg-white/10 transition-colors rounded px-1 -mx-1 ${className}`}
+      className={`outline-none min-w-[1ch] empty:before:content-['...'] empty:before:opacity-50 focus:bg-white/20 transition-colors rounded px-1 -mx-1 ${className}`}
     >
       {value}
     </Tag>

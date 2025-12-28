@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, ExternalLink, Hash, Heart, Terminal, Cpu, Disc, Plus } from 'lucide-react';
+import { X, ArrowUpRight, Plus, Disc, Zap, Eye } from 'lucide-react';
 import { IPData, CPData, SiteConfig } from './types';
 import { FANDOM_DATA, DEFAULT_SITE_CONFIG } from './constants';
-import { NoiseOverlay } from './components/NoiseOverlay';
 import { EditableText } from './components/EditableText';
+import { GrainOverlay } from './components/GrainOverlay';
 
-// --- Custom Hook for LocalStorage ---
-
+// --- Custom Hook ---
 function useStickyState<T>(key: string, defaultValue: T): [T, React.Dispatch<React.SetStateAction<T>>] {
   const [value, setValue] = useState<T>(() => {
     const stickyValue = window.localStorage.getItem(key);
@@ -21,296 +20,191 @@ function useStickyState<T>(key: string, defaultValue: T): [T, React.Dispatch<Rea
   return [value, setValue];
 }
 
-// --- Helper Components ---
+// --- Components ---
 
-const Marquee = ({ text, onUpdate }: { text: string; onUpdate: (val: string) => void }) => (
-  <div className="relative flex overflow-hidden py-2 bg-acid-green text-black font-mono font-bold text-sm tracking-widest border-y-2 border-acid-black select-none">
-    <div className="absolute left-4 top-1/2 -translate-y-1/2 z-50 bg-acid-green">
-      {/* Hidden edit trigger for Marquee could be placed here, but simpler to just edit one of the spans? 
-          Actually, editing scrolling text is hard. Let's place a static editable area that syncs.
-          Or simpler: The marquee repeats the text. We can overlay an input?
-          Let's try making the first item editable and it updates the rest.
-      */}
-    </div>
-    <motion.div
-      className="flex gap-8 whitespace-nowrap"
-      animate={{ x: '-50%' }}
-      initial={{ x: '0%' }}
-      transition={{ repeat: Infinity, ease: 'linear', duration: 25 }}
-    >
-      {[...Array(10)].map((_, i) => (
-        <span key={i} className="mx-4 flex">
-           {/* Only the first one is practically editable without chasing it, 
-               but for UX let's just allow clicking any. 
-               However, moving text is hard to click. 
-               We will trust the user to pause/catch it or just edit the config elsewhere?
-               Actually, let's just make them all editable instances that update the single source.
-           */}
-           <EditableText 
-             value={text} 
-             onSave={onUpdate} 
-             className="cursor-text"
-           />
-        </span>
-      ))}
-    </motion.div>
-  </div>
-);
-
-const GlitchTitle = ({ text, onUpdate }: { text: string, onUpdate: (val: string) => void }) => {
-  return (
-    <div className="relative inline-block group">
-      {/* Main editable layer */}
-      <div className="text-6xl md:text-8xl font-display font-black text-transparent bg-clip-text bg-gradient-to-r from-acid-green via-acid-blue to-acid-pink z-10 relative">
-        <EditableText value={text} onSave={onUpdate} />
-      </div>
-      
-      {/* Decor layers reading the same text prop */}
-      <h1 className="absolute top-0 left-[2px] text-6xl md:text-8xl font-display font-black text-acid-blue opacity-0 group-hover:opacity-70 animate-pulse mix-blend-screen pointer-events-none select-none">
-        {text}
-      </h1>
-      <h1 className="absolute top-0 -left-[2px] text-6xl md:text-8xl font-display font-black text-acid-pink opacity-0 group-hover:opacity-70 animate-pulse delay-75 mix-blend-screen pointer-events-none select-none">
-        {text}
-      </h1>
-    </div>
-  );
-};
-
-// --- Main Components ---
-
-const IPCard: React.FC<{ 
+const BrutalistCard: React.FC<{ 
   data: IPData; 
+  index: number;
   onClick: () => void;
   onUpdate: (updatedData: Partial<IPData>) => void;
-}> = ({ data, onClick, onUpdate }) => {
-  const colorMap = {
-    green: 'border-acid-green hover:bg-acid-green hover:text-black text-acid-green',
-    pink: 'border-acid-pink hover:bg-acid-pink hover:text-black text-acid-pink',
-    blue: 'border-acid-blue hover:bg-acid-blue hover:text-black text-acid-blue',
-  };
-
+}> = ({ data, index, onClick, onUpdate }) => {
   return (
     <motion.div
       layoutId={`card-${data.id}`}
       onClick={onClick}
-      whileHover={{ scale: 0.98, rotate: Math.random() * 2 - 1 }}
-      className={`relative p-6 border-2 ${colorMap[data.colorTheme]} cursor-pointer group transition-colors duration-300 min-h-[300px] flex flex-col justify-between overflow-hidden`}
+      className="group relative min-h-[400px] border-r border-b border-white/20 bg-void hover:bg-white hover:text-void transition-colors duration-200 cursor-pointer flex flex-col justify-between overflow-hidden"
     >
-      {/* Decorative corners */}
-      <div className="absolute top-0 left-0 w-4 h-4 border-t-4 border-l-4 border-current" />
-      <div className="absolute bottom-0 right-0 w-4 h-4 border-b-4 border-r-4 border-current" />
-      
-      {/* Background Texture on Hover */}
-      <div className="absolute inset-0 opacity-0 group-hover:opacity-10 pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/diagmonds-light.png')]" />
-
-      <div className="space-y-2">
-        <div className="flex justify-between items-start font-mono text-xs border-b border-current pb-2 mb-4">
-          <span>NO.{data.id}</span>
-          <EditableText value={data.category} onSave={(val) => onUpdate({ category: val })} />
-        </div>
-        <div className="text-4xl font-display font-bold leading-none break-words uppercase">
-          <EditableText value={data.title} onSave={(val) => onUpdate({ title: val })} multiline />
-        </div>
+      {/* Giant ID Number in Background */}
+      <div className="absolute -bottom-10 -right-4 text-[12rem] font-impact font-black text-white/5 group-hover:text-black/5 leading-none select-none pointer-events-none transition-colors duration-200">
+        {data.id}
       </div>
 
-      <div className="space-y-4 mt-8">
-         <div className="flex flex-wrap gap-2">
+      {/* Header */}
+      <div className="p-4 border-b border-white/20 group-hover:border-black/20 flex justify-between items-start">
+         <div className="font-mono text-xs uppercase tracking-widest flex flex-col">
+            <span>INDEX_0{index + 1}</span>
+            <span className="opacity-50 group-hover:opacity-100">{data.entryDate}</span>
+         </div>
+         <div className="border border-current px-2 py-0.5 text-[10px] font-mono uppercase rounded-full group-hover:bg-black group-hover:text-white transition-colors">
+            <EditableText value={data.category} onSave={(val) => onUpdate({ category: val })} />
+         </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="p-4 relative z-10">
+         <h2 className="text-5xl md:text-6xl font-display font-bold leading-[0.85] uppercase tracking-tight mb-4 mix-blend-difference">
+            <EditableText value={data.title} onSave={(val) => onUpdate({ title: val })} multiline />
+         </h2>
+         <div className="flex flex-wrap gap-2 mt-4">
             {data.tags.map((tag, idx) => (
-              <span key={idx} className="text-[10px] font-mono border border-current px-1 py-0.5 flex">
-                #<EditableText 
+               <span key={idx} className="text-xs font-mono border border-current px-1 group-hover:border-black">
+                 #<EditableText 
                     value={tag} 
                     onSave={(val) => {
-                      const newTags = [...data.tags];
-                      newTags[idx] = val;
-                      onUpdate({ tags: newTags });
+                       const newTags = [...data.tags];
+                       newTags[idx] = val;
+                       onUpdate({ tags: newTags });
                     }} 
                  />
-              </span>
+               </span>
             ))}
          </div>
-         <div className="flex items-center gap-2 font-mono text-xs">
-            <Disc className={`w-4 h-4 ${data.colorTheme === 'pink' ? 'animate-spin-slow' : ''}`} />
-            <span>ENTERED: <EditableText value={data.entryDate} onSave={(val) => onUpdate({ entryDate: val })} /></span>
-         </div>
+      </div>
+
+      {/* Footer Action */}
+      <div className="p-4 flex justify-between items-end">
+         <ArrowUpRight className="w-8 h-8 group-hover:rotate-45 transition-transform duration-300" />
+         <span className="font-mono text-[10px] uppercase hidden group-hover:inline-block animate-pulse">
+            Access File ->
+         </span>
       </div>
     </motion.div>
   );
 };
 
-const DetailView = ({ 
+const Drawer = ({ 
   data, 
   onClose, 
-  onUpdate 
+  onUpdate,
+  onDelete
 }: { 
   data: IPData; 
   onClose: () => void;
   onUpdate: (updatedData: Partial<IPData>) => void; 
+  onDelete: () => void;
 }) => {
   
-  const themeColors = {
-    green: 'text-acid-green border-acid-green selection:bg-acid-green selection:text-black',
-    pink: 'text-acid-pink border-acid-pink selection:bg-acid-pink selection:text-black',
-    blue: 'text-acid-blue border-acid-blue selection:bg-acid-blue selection:text-black',
-  };
-
-  const bgColors = {
-     green: 'bg-acid-green',
-     pink: 'bg-acid-pink',
-     blue: 'bg-acid-blue',
-  };
-
   const updateCP = (index: number, field: keyof CPData, value: string) => {
     const newCPs = [...data.cps];
     newCPs[index] = { ...newCPs[index], [field]: value };
     onUpdate({ cps: newCPs });
   };
 
+  const deleteCP = (index: number) => {
+    if (confirm("DELETE RELATIONAL DATA?")) {
+      const newCPs = data.cps.filter((_, i) => i !== index);
+      onUpdate({ cps: newCPs });
+    }
+  };
+
   return (
     <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-40 bg-black/95 backdrop-blur-sm flex items-center justify-center p-4 md:p-8 overflow-y-auto"
+      initial={{ x: '100%' }}
+      animate={{ x: '0%' }}
+      exit={{ x: '100%' }}
+      transition={{ type: 'tween', ease: 'circOut', duration: 0.5 }}
+      className="fixed inset-y-0 right-0 z-[60] w-full md:w-[60vw] bg-white text-black border-l-4 border-black shadow-[0_0_50px_rgba(255,255,255,0.2)] flex flex-col overflow-hidden"
     >
-      <motion.div
-        layoutId={`card-${data.id}`}
-        className={`w-full max-w-4xl min-h-[80vh] bg-acid-black border-2 ${themeColors[data.colorTheme].split(' ')[1]} p-1 relative shadow-[0_0_30px_rgba(0,0,0,0.5)] flex flex-col`}
-      >
-        {/* Header Bar */}
-        <div className={`flex justify-between items-center p-4 border-b ${themeColors[data.colorTheme].split(' ')[1]} bg-black/50 sticky top-0 z-10 backdrop-blur-md`}>
-           <div className={`font-mono text-sm ${themeColors[data.colorTheme].split(' ')[0]} flex items-center gap-2`}>
-             <Terminal size={16} />
-             <span>LOG_VIEWER_V.2.5</span>
-             <span className="hidden md:inline"> // ID: {data.id}</span>
+      <div className="flex-none bg-black text-white p-4 flex justify-between items-center select-none">
+        <div className="flex items-center gap-4">
+           <div className="w-3 h-3 bg-red-600 animate-pulse rounded-full" />
+           <h2 className="font-mono text-sm uppercase tracking-widest">
+             ARCHIVE_ID: {data.id}
+           </h2>
+        </div>
+        <button onClick={onClose} className="hover:bg-white hover:text-black transition-colors p-1">
+          <X size={24} />
+        </button>
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-6 md:p-12 space-y-12 bg-[url('https://www.transparenttextures.com/patterns/graphy.png')]">
+        
+        {/* Title Section */}
+        <section className="border-b-4 border-black pb-8">
+           <div className="flex justify-between items-end mb-4">
+              <span className="font-mono text-xs bg-black text-white px-2 py-1">
+                 <EditableText value={data.category} onSave={(val) => onUpdate({ category: val })} />
+              </span>
+              <span className="font-mono text-xs">
+                 REC: <EditableText value={data.entryDate} onSave={(val) => onUpdate({ entryDate: val })} />
+              </span>
            </div>
-           <button 
-             onClick={onClose}
-             className={`p-2 hover:bg-white hover:text-black transition-colors rounded-full border border-current ${themeColors[data.colorTheme].split(' ')[0]}`}
-           >
-             <X size={24} />
+           <h1 className="text-6xl md:text-8xl font-black font-impact uppercase leading-[0.85] tracking-tighter mb-6 break-words">
+              <EditableText value={data.title} onSave={(val) => onUpdate({ title: val })} multiline />
+           </h1>
+           <p className="font-mono text-sm md:text-base leading-relaxed max-w-2xl border-l-2 border-black pl-4">
+              <EditableText value={data.summary} onSave={(val) => onUpdate({ summary: val })} multiline />
+           </p>
+        </section>
+
+        {/* Data Points */}
+        <section className="grid grid-cols-2 gap-4">
+           {data.tags.map((tag, idx) => (
+             <div key={idx} className="border border-black p-3 font-mono text-xs uppercase flex justify-between items-center hover:bg-black hover:text-white transition-colors">
+                <span>#<EditableText value={tag} onSave={(t) => {
+                  const nt = [...data.tags]; nt[idx]=t; onUpdate({tags:nt});
+                }} /></span>
+             </div>
+           ))}
+           <button onClick={() => onUpdate({ tags: [...data.tags, 'NEW_TAG'] })} className="border border-dashed border-black p-3 font-mono text-xs uppercase text-center hover:bg-black hover:text-white">
+             + ADD TAG
+           </button>
+        </section>
+
+        {/* Relationships */}
+        <section>
+          <div className="flex items-center gap-4 mb-8">
+            <h3 className="text-4xl font-display font-bold uppercase">CP Manifest</h3>
+            <div className="flex-1 h-px bg-black" />
+          </div>
+
+          <div className="space-y-8">
+            {data.cps.map((cp, index) => (
+               <div key={index} className="relative group border border-black p-6 bg-white shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all">
+                  <button onClick={() => deleteCP(index)} className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 hover:text-red-600">
+                    <X size={16} />
+                  </button>
+                  <div className="font-impact text-3xl md:text-4xl mb-2">
+                    <EditableText value={cp.name} onSave={(v) => updateCP(index, 'name', v)} />
+                  </div>
+                  <div className="flex gap-4 font-mono text-xs uppercase border-b border-black/10 pb-4 mb-4 text-gray-500">
+                     <span>ROLE: <EditableText value={cp.role} onSave={(v) => updateCP(index, 'role', v)} /></span>
+                     <span>//</span>
+                     <span>VIBE: <EditableText value={cp.vibe} onSave={(v) => updateCP(index, 'vibe', v)} /></span>
+                  </div>
+                  <div className="font-serif italic text-lg md:text-xl">
+                    "<EditableText value={cp.description} onSave={(v) => updateCP(index, 'description', v)} multiline />"
+                  </div>
+               </div>
+            ))}
+          </div>
+
+          <button 
+            onClick={() => onUpdate({ cps: [...data.cps, { name: 'PAIRING_NAME', role: 'ARCHETYPE', vibe: 'DYNAMICS', description: 'Analyze relationship here...' }] })}
+            className="mt-8 w-full py-6 border-2 border-black border-dashed font-mono uppercase text-sm hover:bg-black hover:text-white transition-colors flex items-center justify-center gap-2"
+          >
+            <Plus size={16} /> Init New Relationship Protocol
+          </button>
+        </section>
+
+        {/* Delete Zone */}
+        <div className="pt-12 mt-12 border-t border-black/20">
+           <button onClick={() => { if(confirm("PERMANENT DELETION??")) onDelete(); }} className="text-red-600 font-mono text-xs uppercase hover:underline">
+             [X] TERMINATE THIS ARCHIVE ENTRY PERMANENTLY
            </button>
         </div>
 
-        <div className={`p-6 md:p-12 overflow-y-auto flex-1 ${themeColors[data.colorTheme]}`}>
-          {/* Main Title Area */}
-          <div className="mb-12 border-l-4 border-current pl-6 md:pl-12 py-2">
-            <motion.h2 
-              initial={{ x: -20, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              transition={{ delay: 0.2 }}
-              className="text-5xl md:text-8xl font-display font-black uppercase mb-4 leading-[0.9]"
-            >
-              <EditableText value={data.title} onSave={(val) => onUpdate({ title: val })} multiline />
-            </motion.h2>
-            <div className="font-mono text-lg opacity-80 flex flex-col md:flex-row gap-4 md:items-center">
-              <span className="bg-white/10 px-2 py-1 flex gap-2">TYPE: <EditableText value={data.category} onSave={(val) => onUpdate({ category: val })} /></span>
-              <span className="bg-white/10 px-2 py-1 flex gap-2">DATE: <EditableText value={data.entryDate} onSave={(val) => onUpdate({ entryDate: val })} /></span>
-            </div>
-          </div>
-
-          {/* Grid Content */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12">
-            
-            {/* Left Col: Summary & Stats */}
-            <div className="md:col-span-1 space-y-8">
-              <div className="border border-current p-4 relative">
-                <div className={`absolute -top-3 left-4 px-2 bg-acid-black font-mono text-xs uppercase ${themeColors[data.colorTheme].split(' ')[0]}`}>
-                   System Note
-                </div>
-                <div className="font-mono text-sm leading-relaxed opacity-90">
-                  <EditableText value={data.summary} onSave={(val) => onUpdate({ summary: val })} multiline />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                 <h3 className="font-display font-bold text-xl uppercase mb-4 flex items-center gap-2">
-                    <Hash size={20} /> Data Tags
-                 </h3>
-                 <div className="flex flex-wrap gap-2">
-                   {data.tags.map((tag, idx) => (
-                     <span key={idx} className={`text-xs font-mono px-3 py-1 border border-current ${idx % 2 === 0 ? 'bg-white/5' : ''}`}>
-                       <EditableText 
-                         value={tag} 
-                         onSave={(val) => {
-                           const newTags = [...data.tags];
-                           newTags[idx] = val;
-                           onUpdate({ tags: newTags });
-                         }} 
-                       />
-                     </span>
-                   ))}
-                   <button 
-                     onClick={() => onUpdate({ tags: [...data.tags, 'NEW_TAG'] })}
-                     className="text-xs font-mono px-2 py-1 border border-current bg-white/10 hover:bg-white/20"
-                   >
-                     +
-                   </button>
-                 </div>
-              </div>
-            </div>
-
-            {/* Right Col: CPs & Feelings */}
-            <div className="md:col-span-2 space-y-12">
-              <div>
-                <h3 className="text-3xl font-display font-bold mb-8 border-b border-current pb-2 flex items-center gap-3">
-                  <Heart className="fill-current" />
-                  SHIPPING MANIFEST
-                </h3>
-
-                <div className="space-y-8">
-                  {data.cps.map((cp, index) => (
-                    <motion.div 
-                      key={index}
-                      initial={{ y: 20, opacity: 0 }}
-                      animate={{ y: 0, opacity: 1 }}
-                      transition={{ delay: 0.4 + (index * 0.1) }}
-                      className="group"
-                    >
-                      <div className="flex items-baseline gap-4 mb-2">
-                        <span className="font-mono text-xs opacity-50">0{index + 1}</span>
-                        <h4 className={`text-xl md:text-2xl font-bold font-mono ${bgColors[data.colorTheme]} text-black px-2 inline-block`}>
-                          <EditableText value={cp.name} onSave={(val) => updateCP(index, 'name', val)} />
-                        </h4>
-                      </div>
-                      
-                      <div className="pl-8 border-l border-current/30 ml-2 space-y-3">
-                        <div className="flex gap-4 font-mono text-xs uppercase tracking-widest opacity-70">
-                          <span className="flex">
-                            [<EditableText value={cp.role} onSave={(val) => updateCP(index, 'role', val)} />]
-                          </span>
-                          <span>///</span>
-                          <span className="flex">
-                            <EditableText value={cp.vibe} onSave={(val) => updateCP(index, 'vibe', val)} />
-                          </span>
-                        </div>
-                        <div className="font-serif italic text-lg md:text-xl leading-relaxed opacity-90 transition-all duration-300 hover:opacity-100 hover:scale-[1.02] origin-left hover:text-white">
-                          "<EditableText value={cp.description} onSave={(val) => updateCP(index, 'description', val)} multiline />"
-                        </div>
-                      </div>
-                    </motion.div>
-                  ))}
-                  
-                  <button 
-                     onClick={() => onUpdate({ 
-                       cps: [...data.cps, { name: 'NEW CP', role: 'ROLE', vibe: 'VIBE', description: 'Description...' }] 
-                     })}
-                     className="mt-8 flex items-center gap-2 font-mono text-xs border border-current px-4 py-2 hover:bg-white/10"
-                   >
-                     <Plus size={16} /> ADD ENTRY
-                  </button>
-                </div>
-              </div>
-            </div>
-
-          </div>
-        </div>
-        
-        {/* Footer of modal */}
-        <div className="p-2 border-t border-current flex justify-between items-center font-mono text-[10px] uppercase opacity-50">
-          <span>// END OF FILE</span>
-          <span>MEMORY SIZE: {Math.floor(Math.random() * 500) + 100}MB</span>
-        </div>
-      </motion.div>
+      </div>
     </motion.div>
   );
 };
@@ -318,101 +212,119 @@ const DetailView = ({
 export default function App() {
   const [fandomData, setFandomData] = useStickyState<IPData[]>('acid_fandom_data', FANDOM_DATA);
   const [config, setConfig] = useStickyState<SiteConfig>('acid_site_config', DEFAULT_SITE_CONFIG);
-  
   const [selectedID, setSelectedID] = useState<string | null>(null);
 
   const selectedIP = fandomData.find(ip => ip.id === selectedID) || null;
 
   const handleUpdateIP = (id: string, updatedFields: Partial<IPData>) => {
-    setFandomData(prev => prev.map(item => 
-      item.id === id ? { ...item, ...updatedFields } : item
-    ));
+    setFandomData(prev => prev.map(item => item.id === id ? { ...item, ...updatedFields } : item));
   };
 
   const handleUpdateConfig = (field: keyof SiteConfig, value: string) => {
     setConfig(prev => ({ ...prev, [field]: value }));
   };
 
+  const handleAddIP = () => {
+    const newIP: IPData = {
+      id: crypto.randomUUID().slice(0, 4).toUpperCase(),
+      title: 'UNTITLED DATA',
+      category: 'MISC',
+      entryDate: '2025.XX.XX',
+      colorTheme: 'green',
+      summary: 'Data corruption detected. Please enter summary.',
+      tags: ['NEW'],
+      cps: []
+    };
+    setFandomData([...fandomData, newIP]);
+  };
+
   return (
-    <div className="min-h-screen bg-acid-black text-white relative overflow-x-hidden">
-      <NoiseOverlay />
+    <div className="min-h-screen bg-void text-white selection:bg-white selection:text-black overflow-x-hidden font-sans">
+      <GrainOverlay />
       
-      {/* Top Marquee */}
-      <div className="fixed top-0 left-0 right-0 z-30">
-        <Marquee 
-          text={config.marqueeText} 
-          onUpdate={(val) => handleUpdateConfig('marqueeText', val)} 
-        />
-      </div>
-
-      <main className="pt-24 pb-24 px-4 md:px-12 max-w-[1600px] mx-auto relative z-10">
-        
-        {/* Header Section */}
-        <header className="mb-24 flex flex-col md:flex-row justify-between items-end gap-8">
-          <div className="space-y-4">
-             <div className="flex items-center gap-2 font-mono text-acid-green text-xs border border-acid-green px-2 py-1 w-fit">
-               <span className="w-2 h-2 bg-acid-green rounded-full animate-pulse"></span>
-               <span className="flex gap-2">
-                 SYSTEM STATUS: <EditableText value={config.systemStatus} onSave={(val) => handleUpdateConfig('systemStatus', val)} />
-               </span>
-             </div>
-             <GlitchTitle 
-               text={config.mainTitle} 
-               onUpdate={(val) => handleUpdateConfig('mainTitle', val)}
-             />
-          </div>
-          
-          <div className="text-right font-mono text-sm text-acid-blue hidden md:block">
-            <p className="flex justify-end gap-2">USER: <EditableText value={config.userRole} onSave={(val) => handleUpdateConfig('userRole', val)} /></p>
-            <p className="flex justify-end gap-2">LOCATION: <EditableText value={config.location} onSave={(val) => handleUpdateConfig('location', val)} /></p>
-            <p>TOTAL ENTRIES: {fandomData.length}</p>
-          </div>
-        </header>
-
-        {/* Grid Layout */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {/* Introductory 'Card' */}
-          <div className="p-6 border-2 border-dashed border-white/20 flex flex-col justify-end min-h-[300px]">
-            <Cpu className="w-12 h-12 text-white/20 mb-4" />
-            <div className="font-mono text-sm text-white/50 leading-relaxed whitespace-pre-wrap">
-              <EditableText 
-                value={config.introText} 
-                onSave={(val) => handleUpdateConfig('introText', val)} 
-                multiline 
-                className="block"
-              />
+      {/* Header Area */}
+      <header className="relative z-10 pt-12 md:pt-20 px-4 mb-0">
+        <div className="max-w-[1920px] mx-auto">
+          <div className="flex justify-between items-end border-b border-white pb-2 mb-2">
+            <div className="font-mono text-xs uppercase flex gap-4">
+              <span className="flex items-center gap-2"><Disc className="animate-spin" size={12} /> <EditableText value={config.systemStatus} onSave={(v) => handleUpdateConfig('systemStatus', v)} /></span>
+              <span className="hidden md:inline">LOC: <EditableText value={config.location} onSave={(v) => handleUpdateConfig('location', v)} /></span>
+            </div>
+            <div className="font-mono text-xs uppercase text-right">
+               <EditableText value={config.userRole} onSave={(v) => handleUpdateConfig('userRole', v)} />
             </div>
           </div>
+          
+          <h1 className="text-[12vw] leading-[0.8] font-impact font-black uppercase tracking-tighter mix-blend-difference break-words">
+            <EditableText value={config.mainTitle} onSave={(v) => handleUpdateConfig('mainTitle', v)} />
+          </h1>
+          
+          <div className="flex flex-col md:flex-row md:items-start justify-between gap-8 mt-8 pb-12 border-b border-white/20">
+             <div className="md:w-1/3 text-sm font-mono leading-relaxed opacity-80 uppercase">
+                <EditableText value={config.introText} onSave={(v) => handleUpdateConfig('introText', v)} multiline />
+             </div>
+             <div className="md:w-1/3 flex justify-end">
+                <div className="border border-white p-4 w-full md:w-auto text-center hover:bg-white hover:text-black transition-colors cursor-help">
+                   <div className="text-4xl font-display font-bold">{fandomData.length}</div>
+                   <div className="text-[10px] font-mono uppercase">Total Archives</div>
+                </div>
+             </div>
+          </div>
+        </div>
+      </header>
 
-          {fandomData.map((item) => (
-            <IPCard 
+      {/* Main Grid */}
+      <main className="relative z-10 border-t border-white/20">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 bg-white/20 gap-[1px] border-b border-white/20">
+          {fandomData.map((item, index) => (
+            <BrutalistCard 
               key={item.id} 
+              index={index}
               data={item} 
               onClick={() => setSelectedID(item.id)}
               onUpdate={(updated) => handleUpdateIP(item.id, updated)}
             />
           ))}
-        </div>
 
+          {/* ADD BUTTON */}
+          <button 
+            onClick={handleAddIP} 
+            className="group min-h-[400px] bg-void flex flex-col items-center justify-center cursor-pointer hover:bg-white hover:text-black transition-colors"
+          >
+             <Plus className="w-24 h-24 mb-4 stroke-1 group-hover:scale-110 transition-transform" />
+             <span className="font-impact text-2xl uppercase tracking-widest border-b-2 border-transparent group-hover:border-black">Initialize New Entry</span>
+          </button>
+        </div>
       </main>
 
-      {/* Bottom Footer */}
-      <footer className="fixed bottom-0 left-0 right-0 bg-acid-black border-t border-white/10 p-4 z-20 flex justify-between items-center font-mono text-xs text-white/40">
-        <EditableText value={config.footerText} onSave={(val) => handleUpdateConfig('footerText', val)} />
-        <div className="flex gap-4">
-           <span>MADE WITH REACT + TAILWIND</span>
-           <span>[ACID_MODE_ON]</span>
-        </div>
+      {/* Footer */}
+      <footer className="py-12 px-4 border-t border-white/20 flex flex-col md:flex-row justify-between items-center gap-4 text-xs font-mono uppercase opacity-50 relative z-10">
+         <div className="flex gap-4">
+            <span>Memory: {Math.floor(Math.random() * 100)}%</span>
+            <span>Uptime: Forever</span>
+         </div>
+         <EditableText value={config.footerText} onSave={(v) => handleUpdateConfig('footerText', v)} />
       </footer>
 
-      {/* Modal View */}
+      {/* Drawer / Modal */}
       <AnimatePresence>
         {selectedIP && (
-          <DetailView 
-            data={selectedIP} 
-            onClose={() => setSelectedID(null)}
-            onUpdate={(updated) => handleUpdateIP(selectedIP.id, updated)}
-          />
+          <>
+            <motion.div 
+               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+               className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50"
+               onClick={() => setSelectedID(null)}
+            />
+            <Drawer 
+              data={selectedIP} 
+              onClose={() => setSelectedID(null)}
+              onUpdate={(updated) => handleUpdateIP(selectedIP.id, updated)}
+              onDelete={() => {
+                 setFandomData(prev => prev.filter(p => p.id !== selectedIP.id));
+                 setSelectedID(null);
+              }}
+            />
+          </>
         )}
       </AnimatePresence>
     </div>
